@@ -49,6 +49,12 @@ TEST_CASE("Example: Create a new account", "[ex-1]") {
   REQUIRE(accounts.size() == 1);
   std::vector<std::string> empty;
   REQUIRE(transactions[{12345678, 1234}] == empty);
+
+  //check that duplicate accounts cannot be created
+  unsigned int card = 12345;
+  unsigned int pin = 6789;
+  atm.RegisterAccount(card, pin, "Original Owner", 100.0);
+  REQUIRE_THROWS_AS(atm.RegisterAccount(card, pin, "Duplicate Owner", 200.0), std::invalid_argument);
 }
 
 TEST_CASE("Example: Simple widthdraw", "[ex-2]") {
@@ -59,6 +65,25 @@ TEST_CASE("Example: Simple widthdraw", "[ex-2]") {
   Account sam_account = accounts[{12345678, 1234}];
 
   REQUIRE(sam_account.balance == 280.30);
+
+  //check that you cannot withdraw more than the balance
+  REQUIRE_THROWS_AS(atm.WithdrawCash(9999, 0000, 100.0), std::invalid_argument);
+  REQUIRE_THROWS_AS(atm.WithdrawCash(12345678, 1234, 500.0), std::runtime_error);
+  REQUIRE_THROWS_AS(atm.WithdrawCash(12345678, 1234, -100.0), std::invalid_argument);
+}
+
+TEST_CASE("Example: Simple deposit", "[ex-2]") {
+  Atm atm;
+  atm.RegisterAccount(12345678, 1234, "Sam Sepiol", 300.30);
+  atm.DepositCash(12345678, 1234, 20);
+  auto accounts = atm.GetAccounts();
+  Account sam_account = accounts[{12345678, 1234}];
+
+  REQUIRE(sam_account.balance == 320.30);
+
+  //check that you cannot deposit negative amounts
+  REQUIRE_THROWS_AS(atm.DepositCash(12345678, 1234, -100.0), std::invalid_argument);
+  REQUIRE_THROWS_AS(atm.DepositCash(1234567, 234, 100.0), std::invalid_argument);
 }
 
 TEST_CASE("Example: Print Prompt Ledger", "[ex-3]") {
@@ -73,4 +98,5 @@ TEST_CASE("Example: Print Prompt Ledger", "[ex-3]") {
       "Deposit - Amount: $32000.00, Updated Balance: $72099.90");
   atm.PrintLedger("./prompt.txt", 12345678, 1234);
   REQUIRE(CompareFiles("./ex-1.txt", "./prompt.txt"));
+  REQUIRE_THROWS_AS(atm.PrintLedger("./prompt.txt", 1234567, 234), std::invalid_argument);
 }
